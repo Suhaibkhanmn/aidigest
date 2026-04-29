@@ -1,0 +1,30 @@
+{
+  "modes": {
+    "normal": {
+      "provider": "gemini",
+      "writer_model": "gemini-2.5-flash",
+      "helper_model": "gemini-2.5-flash-lite",
+      "api_key_env": "GEMINI_API_KEY",
+      "shortlist_limit": 36,
+      "selected_limit": 12,
+      "send_email_by_default": false,
+      "send_telegram_by_default": true,
+      "output_prefix": "normal"
+    }
+  },
+  "email": {
+    "enabled": false,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "username_env": "AI_DIGEST_EMAIL_USER",
+    "password_env": "AI_DIGEST_EMAIL_PASSWORD",
+    "from": "",
+    "to": ""
+  },
+  "telegram": {
+    "enabled": true,
+    "bot_token_env": "AI_DIGEST_TELEGRAM_BOT_TOKEN",
+    "bot_username_env": "AI_DIGEST_TELEGRAM_BOT_USERNAME",
+    "chat_id_env": "AI_DIGEST_TELEGRAM_CHAT_ID"
+  }
+}

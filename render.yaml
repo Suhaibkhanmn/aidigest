@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: ai-digest-web
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m ai_digest serve --host 0.0.0.0 --port $PORT
+
+  - type: worker
+    name: ai-digest-telegram-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m ai_digest telegram-bot
+
+cronJobs:
+  - name: ai-digest-first-light
+    env: python
+    schedule: "30 2 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m ai_digest run --mode normal --brief first-light --send
+
+  - name: ai-digest-midday-note
+    env: python
+    schedule: "0 10 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m ai_digest run --mode normal --brief midday-note --send
+
+  - name: ai-digest-night-read
+    env: python
+    schedule: "0 19 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m ai_digest run --mode normal --brief night-read --send

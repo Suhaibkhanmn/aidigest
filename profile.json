@@ -1,0 +1,33 @@
+{
+  "interests": [
+    "AI agents",
+    "developer tools",
+    "model releases",
+    "AI infrastructure",
+    "research papers",
+    "automation",
+    "industry shifts"
+  ],
+  "projects": [
+    {
+      "name": "AI Digest",
+      "description": "An AI industry digest that collects broad AI news, dedupes and ranks it in code, uses Gemini for editorial judgment and writing, publishes the full version on the website, and sends a twice-daily Telegram brief. The product should stay 80-90% industry digest and only 10-20% personal/workflow relevance."
+    }
+  ],
+  "digest_preferences": {
+    "tone": "human, thoughtful, direct, clear, not AI-ish",
+    "target_length": "700-1200 words",
+    "project_relevance": "10-20 percent, late section only",
+    "industry_vs_project_balance": "80-90 percent industry, 10-20 percent project relevance",
+    "telegram_style": "long enough to understand the day without opening every source; no repeated stories; concrete workflow relevance only when real",
+    "avoid": [
+      "hype",
+      "generic bullet dumps",
+      "making every story about my projects",
+      "dashboard or landing-page style copy",
+      "vague sections like useful connection",
+      "repeating top stories inside smaller notes",
+      "overusing words like signal, ecosystem, landscape"
+    ]
+  }
+}

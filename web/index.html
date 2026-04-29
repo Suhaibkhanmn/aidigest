@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Digest</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="wordmark" href="/" aria-label="AI Digest home">
+          <span>AI Digest</span>
+          <small id="currentDate"></small>
+        </a>
+
+        <nav class="public-nav" aria-label="Primary">
+          <a href="/?latest=1">Latest</a>
+          <a href="/?latest=1#archive">Archive</a>
+          <a id="telegramJoinTop" class="join-link" href="#" target="_blank" rel="noreferrer">Join Telegram</a>
+        </nav>
+      </header>
+
+      <section class="landing" aria-labelledby="landingTitle">
+        <div class="landing-inner">
+          <div class="landing-copy-block">
+            <p class="landing-kicker">AI industry digest / three times daily</p>
+            <h1 id="landingTitle">A slower read of what happened in AI today.</h1>
+            <p class="landing-copy">
+              Model launches, research papers, infra moves, policy turns, startup drama. Sorted, cited, and written like
+              a person had to read it too.
+            </p>
+            <div class="landing-actions">
+              <a class="primary-link" href="/?latest=1">Read latest issue</a>
+              <a id="telegramJoinHero" class="secondary-link" href="#" target="_blank" rel="noreferrer">Join Telegram</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main id="latest" class="page-grid">
+        <article class="reader" aria-labelledby="digestTitle">
+          <div class="reader-head">
+            <p id="issueDate" class="eyebrow">Current Issue</p>
+            <h1 id="digestTitle">Loading latest issue</h1>
+            <p class="reader-deck">The website is the full read. Telegram is the convenient delivery layer.</p>
+          </div>
+          <div id="digestContent" class="digest-content">
+            <p>Opening the latest digest...</p>
+          </div>
+        </article>
+
+        <aside class="right-rail" aria-label="Issue tools">
+          <section class="rail-block join-block">
+            <p class="eyebrow">Telegram</p>
+            <p class="rail-copy">Get the three daily editions directly in Telegram.</p>
+            <a id="telegramJoinRail" class="rail-join" href="#" target="_blank" rel="noreferrer">Join bot</a>
+          </section>
+
+          <details class="rail-block rail-dropdown" open>
+            <summary class="eyebrow">Sources</summary>
+            <div id="citationList" class="citation-list"></div>
+          </details>
+
+          <details id="archive" class="rail-block rail-dropdown">
+            <summary class="eyebrow">Archive</summary>
+            <div id="archiveList" class="archive-list"></div>
+          </details>
+        </aside>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
