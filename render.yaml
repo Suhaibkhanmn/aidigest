@@ -13,20 +13,22 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python -m ai_digest telegram-bot
 
-cronJobs:
-  - name: ai-digest-first-light
+  - type: cron
+    name: ai-digest-first-light
     env: python
     schedule: "30 2 * * *"
     buildCommand: pip install -r requirements.txt
     startCommand: python -m ai_digest run --mode normal --brief first-light --send
 
-  - name: ai-digest-midday-note
+  - type: cron
+    name: ai-digest-midday-note
     env: python
     schedule: "0 10 * * *"
     buildCommand: pip install -r requirements.txt
     startCommand: python -m ai_digest run --mode normal --brief midday-note --send
 
-  - name: ai-digest-night-read
+  - type: cron
+    name: ai-digest-night-read
     env: python
     schedule: "0 19 * * *"
     buildCommand: pip install -r requirements.txt
