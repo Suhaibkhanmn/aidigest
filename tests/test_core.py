@@ -8,6 +8,7 @@ from ai_digest.editions import edition_label, normalize_edition
 from ai_digest.models import SourceItem
 from ai_digest.pipeline import daily_items, diversify_selected_items, is_misleading_risk_item, is_noise_item, select_digest_items
 from ai_digest.subscribers import active_chat_ids, deactivate_subscriber, upsert_subscriber
+from ai_digest import telegram_bot
 
 
 def item(
@@ -89,6 +90,18 @@ class CoreTests(unittest.TestCase):
         base = item("Rumor says a model could launch next week")
         leak = SourceItem(**{**base.__dict__, "trust": "low"})
         self.assertTrue(is_misleading_risk_item(leak))
+
+    def test_telegram_webhook_update_uses_message_handler(self):
+        calls = []
+        original = telegram_bot.handle_message
+        telegram_bot.handle_message = lambda token, message: calls.append((token, message))
+        try:
+            handled = telegram_bot.handle_update("token", {"message": {"chat": {"id": 123}, "text": "/start"}})
+        finally:
+            telegram_bot.handle_message = original
+        self.assertTrue(handled)
+        self.assertEqual(calls[0][0], "token")
+        self.assertEqual(calls[0][1]["text"], "/start")
 
 
 if __name__ == "__main__":

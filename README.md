@@ -164,8 +164,7 @@ This keeps model usage small while preserving quality.
 
 On Heroku, the app runs as:
 
-- `web` dyno: hosts the website
-- `worker` dyno: listens for Telegram bot commands
+- `web` dyno: hosts the website and receives Telegram bot commands through a webhook
 - Heroku Scheduler: triggers the three digest editions
 - Supabase: stores subscribers and digests
 
@@ -173,8 +172,9 @@ The `Procfile` defines:
 
 ```txt
 web: python -m ai_digest serve --host 0.0.0.0 --port $PORT
-worker: python -m ai_digest telegram-bot
 ```
+
+There is no always-on Telegram worker in the default Heroku setup. This keeps the app to one paid dyno. Telegram commands such as `/start`, `/stop`, and `/latest` are handled by the web dyno through `/telegram/webhook`.
 
 Set these Heroku config vars:
 
@@ -182,6 +182,7 @@ Set these Heroku config vars:
 GEMINI_API_KEY
 AI_DIGEST_TELEGRAM_BOT_TOKEN
 AI_DIGEST_TELEGRAM_BOT_USERNAME
+AI_DIGEST_TELEGRAM_WEBHOOK_SECRET
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 AI_DIGEST_PUBLIC_BASE_URL
@@ -191,6 +192,18 @@ AI_DIGEST_PUBLIC_BASE_URL
 
 ```txt
 https://your-app-name.herokuapp.com
+```
+
+After the app is deployed, register the Telegram webhook once from the Heroku console:
+
+```txt
+python -m ai_digest telegram-set-webhook
+```
+
+If Telegram ever needs to be disconnected from the web dyno:
+
+```txt
+python -m ai_digest telegram-delete-webhook
 ```
 
 Heroku Scheduler should run:

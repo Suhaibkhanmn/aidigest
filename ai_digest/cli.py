@@ -4,7 +4,7 @@ import sys
 from .editions import EDITION_LABELS, normalize_edition
 from .pipeline import DigestPipeline
 from .scheduler import run_scheduler
-from .telegram_bot import run_polling
+from .telegram_bot import delete_webhook, run_polling, set_webhook
 from .web import run_server
 from .memory import sync_local_digests_to_remote
 from .subscribers import sync_local_subscribers_to_remote
@@ -35,6 +35,8 @@ def main() -> None:
     schedule_parser.add_argument("--no-send", action="store_true", help="Run on schedule without delivery")
 
     subparsers.add_parser("telegram-bot", help="Listen for Telegram /start, /stop, and /latest commands")
+    subparsers.add_parser("telegram-set-webhook", help="Connect Telegram commands to the web dyno")
+    subparsers.add_parser("telegram-delete-webhook", help="Remove the Telegram webhook")
     subparsers.add_parser("sync-storage", help="Copy local subscribers and digests into configured cloud storage")
 
     serve_parser = subparsers.add_parser("serve", help="Start the local web app")
@@ -62,6 +64,16 @@ def main() -> None:
         run_polling()
         return
 
+    if args.command == "telegram-set-webhook":
+        result = set_webhook()
+        print(json_like(result))
+        return
+
+    if args.command == "telegram-delete-webhook":
+        result = delete_webhook()
+        print(json_like(result))
+        return
+
     if args.command == "sync-storage":
         subscribers = sync_local_subscribers_to_remote()
         digests = sync_local_digests_to_remote()
@@ -77,3 +89,9 @@ def main() -> None:
         return
 
     run_server(host=getattr(args, "host", "127.0.0.1"), port=getattr(args, "port", 8765))
+
+
+def json_like(value: object) -> str:
+    import json
+
+    return json.dumps(value, indent=2, ensure_ascii=False)

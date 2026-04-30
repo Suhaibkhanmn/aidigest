@@ -53,6 +53,58 @@ def api_call(bot_token: str, method: str, payload: dict[str, Any] | None = None)
         return json.loads(response.read().decode("utf-8"))
 
 
+def webhook_secret() -> str:
+    return env_value("AI_DIGEST_TELEGRAM_WEBHOOK_SECRET")
+
+
+def public_base_url() -> str:
+    return env_value("AI_DIGEST_PUBLIC_BASE_URL").rstrip("/")
+
+
+def webhook_path() -> str:
+    secret = webhook_secret()
+    if secret:
+        return "/telegram/webhook"
+    return "/telegram/webhook"
+
+
+def webhook_url() -> str:
+    base_url = public_base_url()
+    if not base_url:
+        raise RuntimeError("AI_DIGEST_PUBLIC_BASE_URL is not configured")
+    return f"{base_url}{webhook_path()}"
+
+
+def set_webhook() -> dict[str, Any]:
+    bot_token = telegram_token()
+    if not bot_token:
+        raise RuntimeError("AI_DIGEST_TELEGRAM_BOT_TOKEN is not configured")
+    payload: dict[str, Any] = {
+        "url": webhook_url(),
+        "allowed_updates": ["message"],
+        "drop_pending_updates": True,
+    }
+    secret = webhook_secret()
+    if secret:
+        payload["secret_token"] = secret
+    return api_call(bot_token, "setWebhook", payload)
+
+
+def delete_webhook() -> dict[str, Any]:
+    bot_token = telegram_token()
+    if not bot_token:
+        raise RuntimeError("AI_DIGEST_TELEGRAM_BOT_TOKEN is not configured")
+    return api_call(bot_token, "deleteWebhook", {"drop_pending_updates": True})
+
+
+def handle_update(bot_token: str, update: dict[str, Any]) -> bool:
+    message = update.get("message")
+    if not isinstance(message, dict):
+        return False
+    handle_message(bot_token, message)
+    return True
+
+
 def load_offset(path: Path = TELEGRAM_OFFSET_PATH) -> int:
     if not path.exists():
         return 0
@@ -136,9 +188,7 @@ def poll_once(bot_token: str, *, timeout: int = 30) -> int:
     next_offset = offset
     for update in updates:
         next_offset = max(next_offset, int(update.get("update_id", 0)) + 1)
-        message = update.get("message")
-        if message:
-            handle_message(bot_token, message)
+        handle_update(bot_token, update)
     if next_offset != offset:
         save_offset(next_offset)
     return len(updates)

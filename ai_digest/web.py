@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 from .config import ROOT, env_value, load_app_config
 from .memory import list_digests
 from .pipeline import DigestPipeline
+from .telegram_bot import handle_update, telegram_token, webhook_secret
 
 
 STATIC_DIR = ROOT / "web"
@@ -60,6 +61,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/telegram/webhook":
+            return self.handle_telegram_webhook()
         if parsed.path == "/api/run":
             query = parse_qs(parsed.query)
             mode = query.get("mode", ["normal"])[0]
@@ -85,6 +88,31 @@ class Handler(BaseHTTPRequestHandler):
                 }
             )
         return self.send_error(404)
+
+    def handle_telegram_webhook(self) -> None:
+        configured_secret = webhook_secret()
+        if configured_secret:
+            received_secret = self.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+            if received_secret != configured_secret:
+                return self.send_json({"ok": False, "error": "unauthorized"}, status=401)
+
+        bot_token = telegram_token()
+        if not bot_token:
+            return self.send_json({"ok": False, "error": "telegram token not configured"}, status=500)
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            content_length = 0
+
+        try:
+            payload = self.rfile.read(content_length).decode("utf-8") if content_length else "{}"
+            update = json.loads(payload)
+            handled = handle_update(bot_token, update)
+        except Exception as exc:
+            return self.send_json({"ok": False, "error": str(exc)}, status=500)
+
+        return self.send_json({"ok": True, "handled": handled})
 
     def send_file(self, path: Path, content_type: str) -> None:
         if not path.exists():
