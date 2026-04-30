@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from .agent import DigestAgent
-from .config import ensure_dirs, load_profile, mode_config
+from .config import ensure_dirs, env_value, load_profile, mode_config
 from .dedupe import dedupe_items
 from .delivery import maybe_send_email, maybe_send_telegram
 from .editions import edition_label, infer_edition, normalize_edition
@@ -46,7 +46,8 @@ class DigestPipeline:
 
         writer_llm = provider_for(config.provider, config.writer_model, config.api_key_env)
         helper_llm = provider_for(config.provider, config.helper_model, config.api_key_env)
-        full_digest_url = f"http://127.0.0.1:8765/?issue={date_slug}-{brief_kind}"
+        public_base_url = env_value("AI_DIGEST_PUBLIC_BASE_URL") or "http://127.0.0.1:8765"
+        full_digest_url = f"{public_base_url.rstrip('/')}/?issue={date_slug}-{brief_kind}"
         brief = DigestAgent(writer_llm, helper_llm).create_brief(
             mode=mode,
             brief_kind=brief_kind,

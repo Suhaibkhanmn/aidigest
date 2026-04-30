@@ -160,3 +160,43 @@ Gemini handles:
 
 This keeps model usage small while preserving quality.
 
+## Heroku Shape
+
+On Heroku, the app runs as:
+
+- `web` dyno: hosts the website
+- `worker` dyno: listens for Telegram bot commands
+- Heroku Scheduler: triggers the three digest editions
+- Supabase: stores subscribers and digests
+
+The `Procfile` defines:
+
+```txt
+web: python -m ai_digest serve --host 0.0.0.0 --port $PORT
+worker: python -m ai_digest telegram-bot
+```
+
+Set these Heroku config vars:
+
+```txt
+GEMINI_API_KEY
+AI_DIGEST_TELEGRAM_BOT_TOKEN
+AI_DIGEST_TELEGRAM_BOT_USERNAME
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+AI_DIGEST_PUBLIC_BASE_URL
+```
+
+`AI_DIGEST_PUBLIC_BASE_URL` should be your Heroku app URL, for example:
+
+```txt
+https://your-app-name.herokuapp.com
+```
+
+Heroku Scheduler should run:
+
+```txt
+python -m ai_digest run --mode normal --brief first-light --send
+python -m ai_digest run --mode normal --brief midday-note --send
+python -m ai_digest run --mode normal --brief night-read --send
+```
