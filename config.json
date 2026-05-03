@@ -8,7 +8,7 @@
       "shortlist_limit": 36,
       "selected_limit": 12,
       "send_email_by_default": false,
-      "send_telegram_by_default": true,
+      "send_telegram_by_default": false,
       "output_prefix": "normal"
     }
   },

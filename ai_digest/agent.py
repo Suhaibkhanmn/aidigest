@@ -825,6 +825,8 @@ def ensure_smaller_note_sources(markdown: str, analysis: dict, items: list[Sourc
     fixed_lines: list[str] = []
     for line in notes_body.splitlines():
         stripped = line.strip()
+        if stripped.startswith("[Read more](") and fixed_lines and "[Read more](" in fixed_lines[-1]:
+            continue
         if not stripped.startswith("- ") or "[Read more](" in stripped:
             fixed_lines.append(line)
             continue
@@ -1281,6 +1283,13 @@ def fix_mojibake(text: str) -> str:
         "\u00c3\u00a2\u00e2\u201a\u00ac\u00c2\u00a6": "...",
         "\u00c3\u201a": "",
         "\u00c2": "",
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2026": "...",
     }
     for bad, good in replacements.items():
         text = text.replace(bad, good)

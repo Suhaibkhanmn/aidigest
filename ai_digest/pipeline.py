@@ -24,7 +24,8 @@ BRIEF_WINDOWS = {
 
 class DigestPipeline:
     def preview_sources(self) -> list[SourceItem]:
-        return daily_items(dedupe_items(fetch_all_sources()), hours=72)
+        daily = daily_items(dedupe_items(fetch_all_sources()), hours=72)
+        return shortlist_items(daily, shortlist_limit=80)
 
     def run(
         self,
@@ -44,6 +45,12 @@ class DigestPipeline:
         memory = recent_memory()
         daily = daily_items(dedupe_items(fetched), hours=BRIEF_WINDOWS.get(brief_kind, 18))
         daily = suppress_recent_items(daily, memory, min_items=min(10, config.shortlist_limit))
+        daily = widen_quiet_window_if_needed(
+            daily,
+            dedupe_items(fetched),
+            memory,
+            shortlist_limit=config.shortlist_limit,
+        )
         shortlisted = shortlist_items(daily, shortlist_limit=config.shortlist_limit)
         expanded = maybe_expand_items(shortlisted, max_expand=4)
         selected = select_digest_items(expanded, max_items=config.selected_limit)
@@ -128,6 +135,26 @@ def daily_items(items: list[SourceItem], *, hours: int) -> list[SourceItem]:
     if dated:
         return [item for _, item in dated]
     return undated[:40]
+
+
+def widen_quiet_window_if_needed(
+    current_items: list[SourceItem],
+    all_items: list[SourceItem],
+    recent_entries: list[dict],
+    *,
+    shortlist_limit: int,
+    minimum_shortlist: int = 8,
+    fallback_hours: int = 72,
+) -> list[SourceItem]:
+    current_shortlist = shortlist_items(current_items, shortlist_limit=shortlist_limit)
+    if len(current_shortlist) >= minimum_shortlist:
+        return current_items
+    wider = daily_items(all_items, hours=fallback_hours)
+    wider = suppress_recent_items(wider, recent_entries, min_items=min(10, shortlist_limit))
+    wider_shortlist = shortlist_items(wider, shortlist_limit=shortlist_limit)
+    if len(wider_shortlist) > len(current_shortlist):
+        return wider
+    return current_items
 
 
 def suppress_recent_items(items: list[SourceItem], recent_entries: list[dict], *, min_items: int = 10) -> list[SourceItem]:
@@ -218,6 +245,8 @@ def shortlist_items(items: list[SourceItem], *, shortlist_limit: int) -> list[So
         "industry": max(6, shortlist_limit // 5),
         "research": max(6, shortlist_limit // 4),
         "policy": 3,
+        "security": 2,
+        "aggregator": 2,
     }
     for item in ranked:
         source_cap = item.max_items
@@ -255,6 +284,8 @@ def select_digest_items(items: list[SourceItem], *, max_items: int) -> list[Sour
         "industry": 3,
         "research": 2,
         "policy": 1,
+        "security": 1,
+        "aggregator": 1,
     }
     for item in ranked:
         if per_source.get(item.source, 0) >= 2:
@@ -271,7 +302,7 @@ def select_digest_items(items: list[SourceItem], *, max_items: int) -> list[Sour
             continue
         if per_source.get(item.source, 0) >= 2:
             continue
-        if item.source_group == "research" and per_group.get("research", 0) >= group_caps["research"]:
+        if per_group.get(item.source_group, 0) >= group_caps.get(item.source_group, max_items):
             continue
         selected.append(item)
         per_group[item.source_group] = per_group.get(item.source_group, 0) + 1
@@ -321,7 +352,9 @@ def group_rank(source_group: str) -> int:
         "tools": 1,
         "industry": 2,
         "policy": 3,
-        "research": 4,
+        "security": 4,
+        "research": 5,
+        "aggregator": 6,
     }
     return ranking.get(source_group, 5)
 
@@ -345,6 +378,7 @@ def parse_item_date(value: str) -> datetime | None:
 def is_noise_item(item: SourceItem) -> bool:
     title = item.title.lower()
     summary = (item.summary or "").lower()
+    combined = f"{title} {summary}"
     noise_phrases = [
         "grab a ticket",
         "strictlyvc",
@@ -365,8 +399,36 @@ def is_noise_item(item: SourceItem) -> bool:
         "cloud gaming",
         "save up to",
         "tickets are going",
+        "record rallies",
+        "stock gains",
+        "stock soars",
+        "shares plummet",
+        "earnings week",
+        "iphone",
+        "roblox",
+        "atlassian",
+        "windows run",
+        "cisco",
+        "patch tuesday",
+        "ransomware attacks",
+        "oauth abuse",
     ]
     if any(phrase in title for phrase in noise_phrases):
+        return True
+    if item.source in {
+        "The Verge AI",
+        "MIT Technology Review AI",
+        "CNBC Technology",
+        "WIRED Business",
+        "Ars Technica Tech",
+        "Cloudflare Blog",
+        "Product Hunt AI",
+        "Hacker News AI",
+    } and not ai_relevant(combined):
+        return True
+    if item.source_group == "security" and not ai_security_relevant(combined):
+        return True
+    if item.source in {"Hacker News AI", "Product Hunt AI"} and is_aggregator_noise(combined):
         return True
     if item.source == "NVIDIA Newsroom" and any(term in title for term in ["geforce", "gpu gaming", "game pass"]):
         return True
@@ -375,6 +437,54 @@ def is_noise_item(item: SourceItem) -> bool:
     if item.source_group == "industry" and "raises $" in title and "ai" not in summary and "agent" not in summary:
         return True
     return False
+
+
+def ai_relevant(text: str) -> bool:
+    terms = [
+        " ai ",
+        "ai-",
+        "ai's",
+        "artificial intelligence",
+        "machine learning",
+        "generative",
+        "openai",
+        "anthropic",
+        "gemini",
+        "deepmind",
+        "llm",
+        "model",
+        "agent",
+        "nvidia",
+        "gpu",
+        "chip",
+        "data center",
+        "datacenter",
+        "robotics",
+        "automation",
+    ]
+    padded = f" {text} "
+    return any(term in padded for term in terms)
+
+
+def ai_security_relevant(text: str) -> bool:
+    padded = f" {text} "
+    ai_terms = [" ai ", "ai-", "ai's", "artificial intelligence", "machine learning", "llm", "model", "chatgpt", "openai"]
+    security_terms = ["phishing", "malware", "security", "breach", "cyber", "ransomware", "vulnerability"]
+    return any(term in padded for term in ai_terms) and any(term in padded for term in security_terms)
+
+
+def is_aggregator_noise(text: str) -> bool:
+    noisy_terms = [
+        "show hn:",
+        "[video]",
+        "youtube.com",
+        "medium.com",
+        "substack.com",
+        "trade signals",
+        "retail traders",
+        "1984 called",
+    ]
+    return any(term in text for term in noisy_terms)
 
 
 def is_misleading_risk_item(item: SourceItem) -> bool:
