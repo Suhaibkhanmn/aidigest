@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import re
+from urllib.parse import urlparse
 
 from .agent import DigestAgent
 from .config import ensure_dirs, env_value, load_profile, mode_config
@@ -39,7 +41,9 @@ class DigestPipeline:
         date_slug = now.astimezone().strftime("%Y-%m-%d")
 
         fetched = fetch_all_sources()
+        memory = recent_memory()
         daily = daily_items(dedupe_items(fetched), hours=BRIEF_WINDOWS.get(brief_kind, 18))
+        daily = suppress_recent_items(daily, memory, min_items=min(10, config.shortlist_limit))
         shortlisted = shortlist_items(daily, shortlist_limit=config.shortlist_limit)
         expanded = maybe_expand_items(shortlisted, max_expand=4)
         selected = select_digest_items(expanded, max_items=config.selected_limit)
@@ -53,7 +57,7 @@ class DigestPipeline:
             brief_kind=brief_kind,
             date_label=date_label,
             items=selected,
-            recent_memory=recent_memory(),
+            recent_memory=memory,
             profile=load_profile(),
             full_digest_url=full_digest_url,
         )
@@ -68,6 +72,7 @@ class DigestPipeline:
                 "themes": brief.themes,
                 "story_ids": brief.top_story_ids,
                 "source_urls": brief.source_urls,
+                "source_titles": [item.title for item in selected],
                 "digest_path": str(digest_path),
                 "telegram_path": str(telegram_path),
                 "provider": brief.provider,
@@ -123,6 +128,74 @@ def daily_items(items: list[SourceItem], *, hours: int) -> list[SourceItem]:
     if dated:
         return [item for _, item in dated]
     return undated[:40]
+
+
+def suppress_recent_items(items: list[SourceItem], recent_entries: list[dict], *, min_items: int = 10) -> list[SourceItem]:
+    """Avoid repeating stories that already led recent issues.
+
+    Scheduler jobs run as fresh cloud processes, so this check uses compact
+    Supabase-backed memory rather than local files.
+    """
+    if not items or not recent_entries:
+        return items
+    recent_urls = recent_url_keys(recent_entries)
+    recent_titles = recent_title_keys(recent_entries)
+    fresh = [
+        item
+        for item in items
+        if normalized_url_key(item.url) not in recent_urls and normalized_title_key(item.title) not in recent_titles
+    ]
+    if len(fresh) >= min_items:
+        return fresh
+    seen = {normalized_url_key(item.url) for item in fresh}
+    recovered = list(fresh)
+    for item in items:
+        key = normalized_url_key(item.url)
+        if key in seen:
+            continue
+        if key in recent_urls:
+            continue
+        recovered.append(item)
+        seen.add(key)
+        if len(recovered) >= min_items:
+            return recovered
+    return fresh or items[:min_items]
+
+
+def recent_url_keys(entries: list[dict]) -> set[str]:
+    keys: set[str] = set()
+    for entry in entries[-6:]:
+        for url in entry.get("source_urls", []) or []:
+            key = normalized_url_key(str(url))
+            if key:
+                keys.add(key)
+    return keys
+
+
+def recent_title_keys(entries: list[dict]) -> set[str]:
+    keys: set[str] = set()
+    for entry in entries[-6:]:
+        titles = entry.get("source_titles", []) or []
+        for title in titles:
+            key = normalized_title_key(str(title))
+            if key:
+                keys.add(key)
+    return keys
+
+
+def normalized_url_key(url: str) -> str:
+    if not url:
+        return ""
+    parsed = urlparse(url.lower())
+    path = parsed.path.rstrip("/")
+    return f"{parsed.netloc}{path}"
+
+
+def normalized_title_key(title: str) -> str:
+    words = re.findall(r"[a-z0-9]+", title.lower())
+    ignored = {"a", "an", "and", "for", "in", "of", "on", "the", "to", "with"}
+    meaningful = [word for word in words if word not in ignored]
+    return " ".join(meaningful[:12])
 
 
 def shortlist_items(items: list[SourceItem], *, shortlist_limit: int) -> list[SourceItem]:

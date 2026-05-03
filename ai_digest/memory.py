@@ -10,6 +10,15 @@ INDEX_PATH = MEMORY_DIR / "daily_index.jsonl"
 
 
 def recent_memory(limit: int = 8) -> list[dict]:
+    remote = store()
+    if remote.enabled:
+        try:
+            rows = remote.select("daily_index", query={"select": "entry", "order": "recorded_at.desc", "limit": str(limit)})
+        except Exception:
+            rows = []
+        remote_entries = [row.get("entry", {}) for row in rows if isinstance(row.get("entry", {}), dict)]
+        if remote_entries:
+            return list(reversed(remote_entries))
     if not INDEX_PATH.exists():
         return []
     rows: list[dict] = []

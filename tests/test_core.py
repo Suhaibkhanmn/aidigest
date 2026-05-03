@@ -6,7 +6,14 @@ from pathlib import Path
 from ai_digest.dedupe import dedupe_items
 from ai_digest.editions import edition_label, normalize_edition
 from ai_digest.models import SourceItem
-from ai_digest.pipeline import daily_items, diversify_selected_items, is_misleading_risk_item, is_noise_item, select_digest_items
+from ai_digest.pipeline import (
+    daily_items,
+    diversify_selected_items,
+    is_misleading_risk_item,
+    is_noise_item,
+    select_digest_items,
+    suppress_recent_items,
+)
 from ai_digest.subscribers import active_chat_ids, deactivate_subscriber, upsert_subscriber
 from ai_digest import telegram_bot
 
@@ -102,6 +109,13 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(handled)
         self.assertEqual(calls[0][0], "token")
         self.assertEqual(calls[0][1]["text"], "/start")
+
+    def test_suppress_recent_items_filters_previous_issue_urls(self):
+        old_story = item("AI-generated actors and scripts are now ineligible for Oscars", source="TechCrunch")
+        new_story = item("New model release for developers", source="OpenAI", source_group="labs")
+        memory = [{"source_urls": [old_story.url], "source_titles": [old_story.title]}]
+        fresh = suppress_recent_items([old_story, new_story], memory, min_items=1)
+        self.assertEqual(fresh, [new_story])
 
 
 if __name__ == "__main__":
